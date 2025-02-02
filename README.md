@@ -1,4 +1,4 @@
-# Exercise 03: Random Forest Model Pipeline
+# Random Forest Model Pipeline
 
 ## 1. Model Pipeline Components
 
