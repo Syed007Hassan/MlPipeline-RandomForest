@@ -266,49 +266,257 @@ def create_performance_visualization():
 def create_evaluation_diagram():
     """Create a compact evaluation diagram"""
     dot = graphviz.Digraph(comment='Model Evaluation')
-    dot.attr(rankdir='TB')
+    dot.attr(rankdir='LR')  # Left to Right direction
     dot.attr('node', shape='rectangle', style='rounded,filled')
     
-    # Training Process
+    # Main process
     with dot.subgraph(name='cluster_0') as c:
-        c.attr(label='Training & Evaluation Process', style='rounded', color='navy', fontcolor='navy')
+        c.attr(label='Random Forest Training & Evaluation', style='rounded', color='navy', fontcolor='navy')
         
-        # Training nodes
-        c.node('train', 'Training Data\n(80%)', fillcolor='lightblue')
-        c.node('test', 'Test Data\n(20%)', fillcolor='lightblue')
-        c.node('cv', 'Cross-Validation', fillcolor='lightgreen')
-        c.node('rf', 'Random Forest\nTraining', fillcolor='lightgreen')
-        c.node('eval', 'Evaluation', fillcolor='lightpink')
+        # Data Split Cluster
+        with dot.subgraph(name='cluster_split') as d:
+            d.attr(label='Data Preparation & Split', style='rounded', color='blue', fontcolor='blue')
+            d.attr('node', fillcolor='lightblue')
+            
+            d.node('dataset', '''GitHub Issues Dataset
+-----------------
+X: issue_body (text)
+y: issue_label''')
+            
+            d.node('prep', '''Data Preparation
+-----------------
+• Handle missing values
+X = df['issue_body'].fillna('')
+y = df['issue_label']''')
+            
+            d.node('split', '''train_test_split
+-----------------
+test_size=0.2
+random_state=42''')
+            
+            d.node('train', '''Training Data (80%)
+-----------------
+X_train, y_train''')
+            
+            d.node('test', '''Test Data (20%)
+-----------------
+X_test, y_test''')
+            
+            # Connect split nodes
+            d.edge('dataset', 'prep')
+            d.edge('prep', 'split')
+            d.edge('split', 'train')
+            d.edge('split', 'test')
         
-        # Results nodes with metrics
-        c.node('metrics', '''Performance Metrics
+        # Model Training Cluster
+        with dot.subgraph(name='cluster_train') as t:
+            t.attr(label='Model Training', style='rounded', color='darkgreen', fontcolor='darkgreen')
+            t.attr('node', fillcolor='lightgreen')
+            
+            t.node('rf_config', '''Random Forest\nConfiguration
+-----------------
+• n_estimators=100
+• max_depth=None
+• random_state=42''')
+            
+            t.node('cv', '''Cross-Validation
+-----------------
+• K-fold validation
+• Performance check''')
+        
+        # Evaluation & Deployment Cluster
+        with dot.subgraph(name='cluster_eval') as e:
+            e.attr(label='Evaluation & Deployment', style='rounded', color='darkred', fontcolor='darkred')
+            e.attr('node', fillcolor='lightpink')
+            
+            e.node('eval', '''Model\nEvaluation''')
+            
+            e.node('metrics', '''Performance Metrics
 -------------------
-Overall Accuracy: 73%
+Accuracy: 73%
+Bug (P/R): 76%/79%
+Enhance (P/R): 70%/80%
+Question (P/R): 61%/9%''',
+            shape='note', fillcolor='lightyellow')
+            
+            e.node('serialize', '''Model Serialization
+-----------------
+joblib.dump(pipeline)''')
         
-Bug Issues:
-• P: 76%, R: 79%
-
-Enhancements:
-• P: 70%, R: 80%
-
-Questions:
-• P: 61%, R: 9%''',
+        # Training Methodology Note
+        dot.node('methodology', '''Code Implementation
+-----------------
+X_train, X_test, y_train, y_test = 
+    train_test_split(
+        X, y,
+        test_size=0.2,
+        random_state=42
+    )''',
         shape='note', fillcolor='lightyellow')
         
-        c.node('deploy', 'Model Serialization\n(joblib)', fillcolor='lightgray')
-        
-        # Connect nodes
-        c.edge('train', 'rf')
-        c.edge('rf', 'cv', 'validate')
-        c.edge('cv', 'eval')
-        c.edge('test', 'eval')
-        c.edge('eval', 'metrics')
-        c.edge('eval', 'deploy', 'save model')
+        # Connect all components
+        dot.edge('train', 'rf_config')
+        dot.edge('rf_config', 'cv')
+        dot.edge('cv', 'eval')
+        dot.edge('test', 'eval')
+        dot.edge('eval', 'metrics')
+        dot.edge('eval', 'serialize')
+        dot.edge('split', 'methodology', style='dashed')
     
-    # Save diagram with higher DPI for better quality
+    # Save diagram with higher DPI and landscape orientation
     dot.attr(dpi='300')
+    dot.attr(size='12,6')
     dot.render('presentation_images/evaluation_diagram', format='png', cleanup=True)
     return Path('presentation_images/evaluation_diagram.png')
+
+def create_sgd_diagram():
+    """Create a basic diagram showing SGD classifier concept"""
+    dot = graphviz.Digraph(comment='SGD Classifier Basic')
+    dot.attr(rankdir='LR')  # Left to Right direction
+    dot.attr('node', shape='rectangle', style='rounded,filled')
+    
+    # Main process
+    with dot.subgraph(name='cluster_0') as c:
+        c.attr(label='SGD Classifier vs Random Forest', style='rounded', color='navy', fontcolor='navy')
+        
+        # Random Forest side
+        with dot.subgraph(name='cluster_rf') as rf:
+            rf.attr(label='Random Forest', style='rounded', color='darkred', fontcolor='darkred')
+            rf.attr('node', fillcolor='lightpink')
+            
+            rf.node('rf_train', '''Traditional Training
+-----------------
+• Full dataset required
+• Complete retraining
+• Static model''')
+            
+            rf.node('rf_limit', '''Limitations
+-----------------
+• High memory usage
+• Slow updates
+• Fixed patterns''')
+        
+        # SGD side
+        with dot.subgraph(name='cluster_sgd') as sgd:
+            sgd.attr(label='SGD Classifier', style='rounded', color='darkgreen', fontcolor='darkgreen')
+            sgd.attr('node', fillcolor='lightgreen')
+            
+            sgd.node('sgd_train', '''Online Learning
+-----------------
+• Streaming data
+• Incremental updates
+• Dynamic model''')
+            
+            sgd.node('sgd_benefit', '''Benefits
+-----------------
+• Low memory usage
+• Quick updates
+• Adapts to changes''')
+        
+        # Add comparison arrow
+        dot.node('vs', 'VS', shape='circle', fillcolor='lightyellow')
+        
+        # Connect components
+        dot.edge('rf_train', 'rf_limit')
+        dot.edge('sgd_train', 'sgd_benefit')
+    
+    # Add simple note about concept drift
+    dot.node('note1', '''Handling Concept Drift
+-----------------
+Random Forest: Requires retraining
+SGD: Continuous adaptation''',
+    shape='note', fillcolor='lightyellow')
+    
+    # Save diagram
+    dot.attr(dpi='300')
+    dot.attr(size='10,4')  # Smaller size for simpler diagram
+    dot.render('presentation_images/sgd_diagram', format='png', cleanup=True)
+    return Path('presentation_images/sgd_diagram.png')
+
+def create_rf_methodology_diagram():
+    """Create a basic diagram showing RandomForestClassifier methodology"""
+    dot = graphviz.Digraph(comment='Random Forest Methodology')
+    dot.attr(rankdir='TB')  # Top to Bottom direction
+    dot.attr('node', shape='rectangle', style='rounded,filled')
+    
+    # Main process
+    with dot.subgraph(name='cluster_0') as c:
+        c.attr(label='Random Forest Training Methodology', style='rounded', color='navy', fontcolor='navy')
+        
+        # Input Data
+        with dot.subgraph(name='cluster_input') as inp:
+            inp.attr(label='Input', style='rounded', color='blue', fontcolor='blue')
+            inp.attr('node', fillcolor='lightblue')
+            
+            inp.node('data', '''GitHub Issues
+-----------------
+Text Data''')
+            
+            inp.node('features', '''TF-IDF Features
+-----------------
+5000 dimensions''')
+        
+        # Random Forest Process
+        with dot.subgraph(name='cluster_rf') as rf:
+            rf.attr(label='Random Forest', style='rounded', color='darkgreen', fontcolor='darkgreen')
+            rf.attr('node', fillcolor='lightgreen')
+            
+            # Create nodes for trees
+            for i in range(3):  # Show 3 trees to represent 100
+                rf.node(f'tree{i}', f'''Decision Tree {i+1}
+-----------------
+• Random Features
+• Random Samples''')
+            
+            rf.node('ensemble', '''Ensemble
+-----------------
+100 Trees Total''')
+            
+            # Add dots to show more trees
+            rf.node('dots', '...', shape='none')
+        
+        # Prediction Process
+        with dot.subgraph(name='cluster_pred') as pred:
+            pred.attr(label='Classification', style='rounded', color='darkred', fontcolor='darkred')
+            pred.attr('node', fillcolor='lightpink')
+            
+            pred.node('voting', '''Majority Voting
+-----------------
+Each tree votes for
+the issue type''')
+            
+            pred.node('output', '''Final Prediction
+-----------------
+• Bug
+• Enhancement
+• Question''')
+        
+        # Connect components
+        dot.edge('data', 'features')
+        for i in range(3):
+            dot.edge('features', f'tree{i}')
+            dot.edge(f'tree{i}', 'voting')
+        dot.edge('features', 'dots')
+        dot.edge('dots', 'voting')
+        dot.edge('voting', 'output')
+    
+    # Add methodology note
+    dot.node('note1', '''scikit-learn Implementation
+-----------------
+from sklearn.ensemble import 
+RandomForestClassifier
+
+rf = RandomForestClassifier(
+    n_estimators=100,
+    random_state=42
+)''',
+    shape='note', fillcolor='lightyellow')
+    
+    # Save diagram
+    dot.attr(dpi='300')
+    dot.attr(size='8,10')  # Vertical format
+    dot.render('presentation_images/rf_methodology', format='png', cleanup=True)
+    return Path('presentation_images/rf_methodology.png')
 
 def create_custom_diagrams():
     """Create all custom diagrams"""
@@ -324,6 +532,8 @@ def create_custom_diagrams():
     images['concept_drift.png'] = create_concept_drift_diagram()
     images['performance.png'] = create_performance_visualization()
     images['evaluation.png'] = create_evaluation_diagram()
+    images['sgd.png'] = create_sgd_diagram()
+    images['rf_methodology.png'] = create_rf_methodology_diagram()
     
     return images
 
@@ -423,6 +633,25 @@ def create_presentation(images):
             "• Need for adaptive learning"
         ],
         images.get('concept_drift.png')
+    )
+    
+    # Add SGD Classifier Slide
+    add_content_slide_with_image(
+        prs,
+        "Alternative: SGD Classifier for Concept Drift",
+        [
+            "Advantages:",
+            "• Online Learning Capability",
+            "  - Continuous model updates",
+            "  - Adapts to new patterns",
+            "• Memory Efficient",
+            "  - No stored trees",
+            "  - Linear model complexity",
+            "• Scalable Solution",
+            "  - Fast training and updates",
+            "  - Handles streaming data"
+        ],
+        images.get('sgd.png')
     )
     
     # Save the presentation
